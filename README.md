@@ -74,8 +74,19 @@ a public repository.
 - JSON: `dataset/books.json`
 
 The `image_path` values in the dataset are relative to the project root, for
-example `images/fantasy/volume-id_hash.jpg`. `price` is intentionally blank
-so you can assign mock prices in your bookstore backend.
+example `images/fantasy/volume-id_hash.jpg`.
+
+The saved dataset includes mock `price` values in Philippine pesos (PHP) for
+the academic bookstore. Store prices as numeric amounts without a currency
+symbol: `399.00` means PHP 399.00. Category base prices are PHP 299 for fiction,
+romance, and mystery; PHP 349 for fantasy and science fiction; PHP 399 for
+self-help; PHP 449 for history; PHP 499 for business and cooking; and PHP 699
+for technology. Each started 100 pages beyond 200 adds PHP 50, capped at
+PHP 400 extra. Missing or zero page counts use the category base price.
+These are sample prices for demonstration.
+
+The collector still exports blank prices when run again. Reapply your store's
+prices after collecting a new dataset.
 
 ## Using the data in a React project
 
