@@ -1,5 +1,9 @@
 # Folio testing and verification
 
+Security and deployment follow-up. The 12 API tests cover current terms validation, stronger password hash migration, administrator password rotation and session revocation, secure cookie attributes, allowed write origins, rate limits, clean error responses and order ownership. The 2 browser scenarios cover signed-in home redirect and reload after signup, policy pages, and the existing purchase and administration flows. Lint and the production build passed. The npm audit reported zero known dependency vulnerabilities at the time of the check.
+
+The production Node entry point started against an isolated replica set using test merchant details and served the readiness endpoint and built privacy route. It refused to start with secure cookies disabled. The Docker build could not run because the Docker Desktop engine was unavailable. An external HTTPS endpoint, production database and actual merchant policies still need staging verification before a public release.
+
 The API suite uses Supertest and a disposable real MongoDB replica set. It checks writes through Express and re-reads via the API or Mongoose. The browser suite serves the production build and seeds a separate disposable database. Playwright exercises the UI using labeled fields and role-based selectors. The suite records Playwright traces on assertion failures and captures review screenshots under test-results.
 
 ## Commands

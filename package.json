@@ -2,7 +2,9 @@
   "name": "folio-bookstore",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=22.12"},
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "concurrently -k -n API,WEB npm:dev:api npm:dev:web",
     "dev:api": "node --watch server/index.js",
@@ -18,7 +20,7 @@
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
-    "csv-parse": "^6.1.0",
+    "csv-parse": "^7.0.3",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",

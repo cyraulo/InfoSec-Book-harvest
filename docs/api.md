@@ -5,7 +5,9 @@ The browser uses same-origin /api. JSON mutations must send Content-Type: applic
 | Method and path (under /api) | Access | Request and result |
 | --- | --- | --- |
 | GET /health | Public | Readiness indicator |
-| POST /auth/register | Public | name, email, password. Returns public user and session cookie (201). |
+| GET /ready | Public | Status 200 when MongoDB is connected and 503 otherwise. |
+| GET /store-info | Public | Public merchant identity, policy contact and notice text. |
+| POST /auth/register | Public | name, email, password and termsVersion from shared/policies.js. Returns public user and session cookie (201). |
 | POST /auth/login | Public | email, password. Returns public user and rotates session cookie. |
 | POST /auth/logout | Public | Empty JSON object. Deletes current session and clears cookie (204). |
 | GET /profile | Signed in | Public fields for the current user |

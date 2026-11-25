@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { config } from '../config.js';
-import { connect, User } from '../models.js';
+import { connect, Session, User } from '../models.js';
 import { hashPassword } from '../auth.js';
 import { parse, registration } from '../validation.js';
 
@@ -13,7 +13,14 @@ try {
   if (password === 'replace-with-a-strong-unique-password') throw new Error('Replace the example ADMIN_PASSWORD.');
   await connect(config.mongoUri);
   const existing = await User.findOne({ email: profile.email });
-  if (existing?.role === 'admin') {
+  if (existing?.role === 'admin' && process.argv.includes('--rotate-password')) {
+    const passwordHash = await hashPassword(password);
+    await mongoose.connection.transaction(async session => {
+      await User.updateOne({ _id: existing._id, role: 'admin' }, { $set: { passwordHash } }, { session });
+      await Session.deleteMany({ user: existing._id }, { session });
+    });
+    console.log('Administrator password updated and existing sessions revoked.');
+  } else if (existing?.role === 'admin') {
     console.log('Administrator already exists.');
   } else if (existing) {
     throw new Error('This email belongs to a customer. Choose a different administrator email.');

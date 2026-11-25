@@ -19,7 +19,7 @@ Copy the root .env.example to .env. Vite proxies /api and /covers to the Express
 | MONGOMS_VERSION | Optional. A supported MongoDB release | Choose the MongoDB version used by mongodb-memory-server |
 | GOOGLE_BOOKS_API_KEY | Optional for the separate Python collector | API credential supplied through the collector process environment. The MERN application does not use it. |
 
-Local development URLs are http://localhost:5173 for Vite and http://127.0.0.1:4000 for the Express listener. The browser should use one host consistently. For a local production preview use APP_ORIGIN=http://localhost:4000 and COOKIE_SECURE=false. For internet deployment use the public HTTPS origin and COOKIE_SECURE=true. Configure TLS at the ingress and do not expose a development database. The app does not enable CORS, so expose the SPA and API together.
+Local development URLs are http://localhost:5173 for Vite and http://127.0.0.1:4000 for the Express listener. The browser should use one host consistently. To preview the built bundle over local HTTP, use NODE_ENV=development, APP_ORIGIN=http://localhost:4000 and COOKIE_SECURE=false. For internet deployment, follow [the deployment runbook](deployment.md). Production refuses to start without an exact HTTPS origin, secure cookies and the operator's public details.
 
 The local database script can download a MongoDB binary on its first run. Its data directory is .local/mongo. Do not run two database instances against that directory. For a managed service create a test database and configure access from your deployment before running seed and admin. Production Express serves cover files from images/. Missing and broken images show the same fallback. Admin cover paths are local and must match /covers/category/file.ext.
 

@@ -73,6 +73,11 @@ nav a[aria-current="page"] { color: var(--action); background: var(--tint); text
 footer { border-block-start: 1px solid var(--line); padding-block: 1.1rem; color: var(--muted); }
 .footer-inner { justify-content: space-between; gap: var(--s2); }
 .footer-brand { font-family: var(--serif); font-size: 1.15rem; }
+.policy-links { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.policy-page { max-width: 46rem; margin-inline: auto; }
+.policy-page h2 { margin-block-start: var(--s5); }
+.policy-check { display: flex; align-items: center; gap: var(--s2); cursor: pointer; min-height: 2.75rem; }
+.policy-check input { width: 1.25rem; height: 1.25rem; min-height: 0; margin: 0; flex: none; accent-color: var(--action); }
 .button {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-block-size: 2.65rem;
   border: 1px solid var(--action); background: var(--action); border-radius: var(--radius); padding: .52rem 1rem;

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Component, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BookOpen, ShoppingBag } from 'lucide-react';
 import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { Catalog, Detail, Home } from './catalog';
 import { CartPage, Checkout, OrderDetail, Orders } from './purchase';
 import { BookEditor, CategoryEditor, Dashboard, ManageBooks, ManageCategories } from './admin';
 import { Feedback, Heading, useAction } from './shared';
+import { Policies } from './policies';
 import './styles.css';
 
 function Frame() {
@@ -52,7 +53,9 @@ function Frame() {
       <Outlet />
     </main>
     <footer><div className="shell footer-inner"><Link to="/" className="footer-brand">Folio Bookshop</Link>
-      <span>Prices in Philippine pesos · Cash on delivery</span></div></footer>
+      <nav className="policy-links" aria-label="Store policies">
+        <Link to="/privacy">Privacy notice</Link><Link to="/terms">Terms and conditions</Link>
+      </nav><span>Prices in Philippine pesos · Cash on delivery</span></div></footer>
   </>;
 }
 function AdminFrame() {
@@ -74,6 +77,8 @@ function App() {
       <Route path="books/:id" element={<Detail />} />
       <Route path="login" element={<AuthPage key="login" />} />
       <Route path="register" element={<AuthPage key="register" register />} />
+      <Route path="privacy" element={<Policies key="privacy" kind="privacy" />} />
+      <Route path="terms" element={<Policies key="terms" kind="terms" />} />
       <Route element={<Guard />}><Route path="profile" element={<ProfilePage />} /></Route>
       <Route element={<Guard role="customer" />}>
         <Route path="cart" element={<CartPage />} />
@@ -99,4 +104,15 @@ function App() {
     </Route>
   </Routes></AccountProvider></BrowserRouter>;
 }
-createRoot(document.getElementById('root')).render(<App />);
+class AppErrorBoundary extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <main className="shell main"><Heading title="The bookstore could not load" />
+      <p>Please reload to try again.</p><a href="/">{'Return to Folio'}</a></main>;
+  }
+}
+createRoot(document.getElementById('root')).render(<AppErrorBoundary><App /></AppErrorBoundary>);

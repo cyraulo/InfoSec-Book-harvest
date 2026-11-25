@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_PRICE, MAX_QUANTITY, MAX_STOCK, STATUSES } from './models.js';
+import { policyVersion } from '../shared/policies.js';
 
 export class ApiError extends Error {
   constructor(status, message, fields) {
@@ -11,8 +12,11 @@ export class ApiError extends Error {
 export function parse(schema, value) {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
-  const fields = {};
-  for (const issue of result.error.issues) fields[issue.path.join('.') || 'form'] ??= issue.message;
+  const fields = Object.create(null);
+  for (const issue of result.error.issues) {
+    const field = issue.path.join('.') || 'form';
+    fields[field] ??= issue.code === 'unrecognized_keys' ? 'Remove unsupported fields and try again.' : issue.message;
+  }
   throw new ApiError(400, 'Check the highlighted values and try again.', fields);
 }
 export const objectId = z.string().regex(/^[0-9a-f]{24}$/i, 'Invalid record identifier.');
@@ -23,6 +27,9 @@ const phone = z.string().trim().regex(/^[+\d(). -]{7,30}$/, 'Enter a valid phone
   .refine(value => value.replace(/\D/g, '').length >= 7, 'Enter at least seven digits.');
 export const login = z.strictObject({ email, password: z.string().min(1).max(128) });
 export const registration = z.strictObject({ name, email, password });
+export const customerRegistration = registration.extend({
+  termsVersion: z.literal(policyVersion, 'Review and accept the current terms to continue.'),
+});
 export const profile = z.strictObject({ name, phone: z.union([phone, z.literal('')]) });
 export const slugify = value => value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');

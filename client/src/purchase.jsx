@@ -48,7 +48,7 @@ export function CartPage() {
       </section>
       <aside className="panel summary">
         <h2>Order summary</h2><p className="summary-total"><span>Total</span><strong>{money(cart.totalCents)}</strong></p>
-        <p>Cash on delivery. No delivery fee in this demo.</p>
+        <p>Cash on delivery. No delivery fee.</p>
         {cart.items.every(line => line.available)
           ? <Link className="button" to="/checkout">Continue to checkout</Link>
           : <p>Update or remove unavailable items before checking out.</p>}
@@ -131,6 +131,7 @@ export function Checkout() {
             <span>{line.quantity} × {line.book?.title ?? 'Unavailable book'}</span><strong>{money(line.lineTotalCents)}</strong>
           </li>)}</ul>
           <p><strong>Payment method</strong><br />Cash on delivery</p><p className="summary-total"><span>Total</span><strong>{money(cart.totalCents)}</strong></p>
+          <p>Review the <Link to="/terms" target="_blank" rel="noopener">Terms and conditions</Link> for delivery and returns.</p>
           <button className="button" disabled={resource.loading || cart.items.some(line => !line.available)} aria-disabled={action.pending}>
             {action.pending ? 'Placing order…' : 'Place order'}
           </button>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, scryptSync } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { promisify } from 'node:util';
 import mongoose from 'mongoose';
@@ -11,6 +11,7 @@ import { hashPassword } from '../auth.js';
 import { Book, connect, Session, User } from '../models.js';
 import { seedCatalog } from '../scripts/seed.js';
 import { root } from '../config.js';
+import { policyVersion } from '../../shared/policies.js';
 
 let database, app, admin, shop, other, category, book;
 const password = 'test-password-only';
@@ -22,7 +23,7 @@ const fixture = overrides => ({
 });
 async function register(email) {
   const agent = request.agent(app);
-  await agent.post('/api/auth/register').send({ name: 'Test Shopper', email, password }).expect(201);
+  await agent.post('/api/auth/register').send({ name: 'Test Shopper', email, password, termsVersion: policyVersion }).expect(201);
   return agent;
 }
 async function createBook(overrides) {
@@ -57,7 +58,7 @@ test('AUTH-01 normalized registration, invalid input, duplicate email, profile, 
   const login = '/api/auth/login';
   await agent.get('/api/profile').expect(401);
   await agent.post('/api/auth/register').send({ name: 'A', email: 'invalid', password: 'short' }).expect(400);
-  await agent.post('/api/auth/register').send({ name: 'A', email: 'BUYER@EXAMPLE.TEST', password }).expect(409);
+  await agent.post('/api/auth/register').send({ name: 'A', email: 'BUYER@EXAMPLE.TEST', password, termsVersion: policyVersion }).expect(409);
   await agent.post(login).send({ email: 'buyer@example.test', password: 'wrong-password' }).expect(401);
   const response = await agent.post(login).send({ email: ' BUYER@example.test ', password }).expect(200);
   assert.equal(response.body.email, 'buyer@example.test');
@@ -82,6 +83,56 @@ test('AUTH-02 auth limit returns a consistent 429', async () => {
   await limited.post('/api/auth/login').send(payload).expect(401);
   const result = await limited.post('/api/auth/login').send(payload).expect(429);
   assert.match(result.body.error.message, /Too many/);
+});
+test('SEC-01 current terms are required and recorded without exposing acceptance or credentials', async () => {
+  const email = 'policy@example.test';
+  const profile = { name: 'Policy Test', email, password };
+  await request(app).post('/api/auth/register').send(profile).expect(400);
+  await request(app).post('/api/auth/register').send({ ...profile, termsVersion: 'obsolete' }).expect(400);
+  assert.equal(await User.exists({ email }), null);
+  const registered = await request(app).post('/api/auth/register').send({ ...profile, termsVersion: policyVersion }).expect(201);
+  const saved = await User.findOne({ email }).select('+termsVersion +termsAcceptedAt +passwordHash');
+  assert.equal(saved.termsVersion, policyVersion);
+  assert(saved.termsAcceptedAt instanceof Date);
+  assert.match(saved.passwordHash, /^scrypt2:/);
+  assert.equal(registered.body.passwordHash, undefined);
+  assert.equal(registered.body.termsVersion, undefined);
+});
+test('SEC-02 production origin, cookie flags, no-store, CSP and clean client errors', async t => {
+  const origin = 'https://bookshop.example.test';
+  const production = request(createApp({ publicOrigin: origin, secure: true }));
+  await production.post('/api/auth/login').send({ email: 'buyer@example.test', password }).expect(403);
+  await production.post('/api/auth/login').set('Origin', origin).set('Sec-Fetch-Site', 'cross-site')
+    .send({ email: 'buyer@example.test', password }).expect(403);
+  const result = await production.post('/api/auth/login').set('Origin', origin)
+    .send({ email: 'buyer@example.test', password }).expect(200).expect('Cache-Control', 'no-store');
+  const cookie = result.headers['set-cookie'][0];
+  assert.match(cookie, /^__Host-folio_session=/);
+  for (const attribute of ['Secure', 'HttpOnly', 'SameSite=Lax', 'Path=/']) assert(cookie.includes(attribute));
+  assert(!cookie.includes('Domain='));
+  assert.match(result.headers['content-security-policy'], /frame-ancestors 'none'/);
+  assert(result.headers['strict-transport-security']);
+  await production.get('/api/profile').set('Cookie', cookie.split(';')[0]).expect(200);
+  await production.post('/api/auth/logout').set('Origin', origin).set('Cookie', cookie.split(';')[0]).send({}).expect(204);
+  await production.get('/api/profile').set('Cookie', cookie.split(';')[0]).expect(401);
+  const invalid = await production.post('/api/auth/login').set('Origin', origin).type('json').send('{').expect(400);
+  assert.deepEqual(invalid.body, { error: { message: 'The submitted data is invalid or too large.' } });
+  await production.get('/api/ready').expect(200, { status: 'ready' });
+  const limited = request(createApp({ apiLimit: 1 }));
+  await limited.get('/api/books').expect(200);
+  await limited.get('/api/books').expect(429);
+  t.mock.method(Book, 'countDocuments', () => { throw new Error('private diagnostic sent to the server'); });
+  const failure = await production.get('/api/books').expect(500);
+  assert.deepEqual(failure.body, { error: { message: 'The server could not complete this request. Try again.' } });
+});
+test('SEC-03 existing password verifies and is replaced with the stronger hash on successful login', async () => {
+  const email = 'legacy@example.test';
+  const salt = '1'.repeat(32);
+  const oldHash = salt + ':' + scryptSync(password, salt, 64).toString('hex');
+  await User.create({ name: 'Existing account', email, passwordHash: oldHash });
+  await request(app).post('/api/auth/login').send({ email, password }).expect(200);
+  const saved = await User.findOne({ email }).select('+passwordHash');
+  assert.match(saved.passwordHash, /^scrypt2:/);
 });
 test('CAT-01 category create/list/read/edit/delete, duplicate, invalid, missing and forbidden', async () => {
   await shop.post(base + '/categories').send({ name: 'Blocked' }).expect(403);
@@ -215,5 +266,13 @@ test('SETUP-01 seed and administrator commands use environment configuration and
   const second = await child(process.execPath, ['server/scripts/admin.js'], options);
   assert.match(first.stdout, /Administrator created/);
   assert.match(second.stdout, /Administrator already exists/);
-  await request(app).post('/api/auth/login').send({ email: 'cli@example.test', password }).expect(200);
+  const cliAdmin = request.agent(app);
+  await cliAdmin.post('/api/auth/login').send({ email: 'cli@example.test', password }).expect(200);
+  const newPassword = 'rotated-test-password';
+  const rotated = await child(process.execPath, ['server/scripts/admin.js', '--rotate-password'],
+    { ...options, env: { ...options.env, ADMIN_PASSWORD: newPassword } });
+  assert.match(rotated.stdout, /existing sessions revoked/);
+  await cliAdmin.get('/api/profile').expect(401);
+  await cliAdmin.post('/api/auth/login').send({ email: 'cli@example.test', password }).expect(401);
+  await cliAdmin.post('/api/auth/login').send({ email: 'cli@example.test', password: newPassword }).expect(200);
 });

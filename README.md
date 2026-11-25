@@ -46,10 +46,11 @@ To serve the built SPA and API together on local HTTP:
 ```powershell
 $env:APP_ORIGIN = 'http://localhost:4000'
 $env:COOKIE_SECURE = 'false'
+$env:NODE_ENV = 'development'
 npm run start
 ```
 
-Open [http://localhost:4000](http://localhost:4000). For deployment set NODE_ENV=production, APP_ORIGIN to the public HTTPS origin, COOKIE_SECURE=true and MONGODB_URI to your protected cluster. Keep the API and SPA on the same origin. Set HOST according to the deployment and keep the database private.
+Open [http://localhost:4000](http://localhost:4000). For a public release, follow the [deployment and security runbook](docs/deployment.md).
 
 ## Documentation
 

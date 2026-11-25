@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 import { authenticated, role } from './auth.js';
 import { authControllers, books, cart, categories, dashboard, order } from './controllers.js';
 
-export function routes({ secure, authLimit }) {
+export function routes({ secure, authLimit, store }) {
   const api = Router();
+  const requireSession = authenticated(secure);
   const auth = authControllers(secure);
   const catalog = books(false);
   const managedBooks = books(true);
@@ -15,16 +17,21 @@ export function routes({ secure, authLimit }) {
     handler: (request, response) => response.status(429).json({ error: { message: 'Too many attempts. Try again later.' } }),
   });
   api.get('/health', (request, response) => response.json({ status: 'ok' }));
+  api.get('/ready', (request, response) => {
+    const ready = mongoose.connection.readyState === 1;
+    response.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'unavailable' });
+  });
+  api.get('/store-info', (request, response) => response.json(store));
   api.post('/auth/register', accountLimiter, auth.register);
   api.post('/auth/login', accountLimiter, auth.login);
   api.post('/auth/logout', auth.logout);
-  api.get('/profile', authenticated, auth.profile);
-  api.patch('/profile', authenticated, auth.updateProfile);
+  api.get('/profile', requireSession, auth.profile);
+  api.patch('/profile', requireSession, auth.updateProfile);
   api.get('/books', catalog.list);
   api.get('/books/:id', catalog.get);
   api.get('/categories', categories.list);
 
-  api.use(['/cart', '/orders'], authenticated, role('customer'));
+  api.use(['/cart', '/orders'], requireSession, role('customer'));
   api.get('/cart', cart.get);
   api.post('/cart/items', cart.add);
   api.patch('/cart/items/:id', cart.set);
@@ -35,7 +42,7 @@ export function routes({ secure, authLimit }) {
   api.get('/orders/checkout/:key', ownOrders.findCheckout);
   api.get('/orders/:id', ownOrders.get);
 
-  api.use('/admin', authenticated, role('admin'));
+  api.use('/admin', requireSession, role('admin'));
   api.get('/admin/dashboard', dashboard);
   api.get('/admin/books', managedBooks.list);
   api.post('/admin/books', managedBooks.create);

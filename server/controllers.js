@@ -1,34 +1,45 @@
 import mongoose from 'mongoose';
 import { Book, Cart, Category, Order, User } from './models.js';
-import { cookieName, cookieOptions, endSession, hashPassword, issueSession, publicUser, verifyPassword } from './auth.js';
+import { cookieOptions, createSession, endSession, hashPassword, needsPasswordUpgrade, publicUser,
+  sessionCookie, setSessionCookie, verifyPassword } from './auth.js';
 import * as rules from './validation.js';
 import * as catalog from './services/catalog.js';
 import * as orders from './services/orders.js';
 
 const id = request => rules.parse(rules.objectId, request.params.id);
 const body = schema => request => rules.parse(schema, request.body);
-const authBody = { login: body(rules.login), registration: body(rules.registration), profile: body(rules.profile) };
+const authBody = { login: body(rules.login), registration: body(rules.customerRegistration), profile: body(rules.profile) };
 export function authControllers(secure) {
   return {
     async register(request, response) {
       const { password, ...input } = authBody.registration(request);
       const passwordHash = await hashPassword(password);
-      const user = await mongoose.connection.transaction(async session => {
-        const [customer] = await User.create([{ ...input, passwordHash }], { session });
+      const { customer, token } = await mongoose.connection.transaction(async session => {
+        const [customer] = await User.create([{ ...input, passwordHash, termsAcceptedAt: new Date() }], { session });
         await Cart.create([{ customer: customer._id }], { session });
-        return customer;
+        return { customer, token: await createSession(customer, request, secure, session) };
       });
-      response.status(201).json(await issueSession(user, request, response, secure));
+      setSessionCookie(response, token, secure);
+      response.status(201).json(publicUser(customer));
     },
     async login(request, response) {
       const { email, password } = authBody.login(request);
       const user = await User.findOne({ email }).select('+passwordHash');
       if (!(await verifyPassword(password, user?.passwordHash))) throw new rules.ApiError(401, 'Email or password is incorrect.');
-      response.json(await issueSession(user, request, response, secure));
+      const passwordHash = needsPasswordUpgrade(user.passwordHash) ? await hashPassword(password) : user.passwordHash;
+      const token = await mongoose.connection.transaction(async session => {
+        // Serialize session issuance with password rotation, even when the hash is already current.
+        const result = await User.updateOne({ _id: user._id, passwordHash: user.passwordHash },
+          { $set: { passwordHash }, $inc: { __v: 1 } }, { session, timestamps: false });
+        if (!result.matchedCount) throw new rules.ApiError(401, 'Email or password is incorrect.');
+        return createSession(user, request, secure, session);
+      });
+      setSessionCookie(response, token, secure);
+      response.json(publicUser(user));
     },
     async logout(request, response) {
-      await endSession(request);
-      response.clearCookie(cookieName, cookieOptions(secure)).sendStatus(204);
+      await endSession(request, secure);
+      response.clearCookie(sessionCookie(secure), cookieOptions(secure)).sendStatus(204);
     },
     profile(request, response) {
       response.json(publicUser(request.user));

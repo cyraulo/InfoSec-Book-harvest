@@ -17,11 +17,13 @@ const userSchema = new Schema({
   email: { type: String, required: true, trim: true, lowercase: true, unique: true },
   phone: { type: String, default: '', maxlength: 30 },
   passwordHash: { type: String, required: true, select: false },
+  termsVersion: { type: String, select: false },
+  termsAcceptedAt: { type: Date, select: false },
   role: { type: String, enum: ['customer', 'admin'], default: 'customer', required: true },
 }, timestamps);
 const sessionSchema = new Schema({
   tokenHash: { type: String, required: true, unique: true, select: false },
-  user: ref('User'),
+  user: { ...ref('User'), index: true },
   expiresAt: { type: Date, required: true, expires: 0 },
 }, timestamps);
 const categorySchema = new Schema({

@@ -22,7 +22,10 @@ export async function api(route, { method = 'GET', body, signal } = {}) {
   if (response.status === 204) return true;
   const data = await response.json().catch(() => null);
   if (!response.ok || data === null) {
-    if (response.status === 401 && !route.startsWith('/auth/')) {
+    if (response.status >= 500) {
+      throw new RequestError('The bookstore is temporarily unavailable. Please try again shortly.', response.status);
+    }
+    if (response.status === 401 && !signal?.aborted && !route.startsWith('/auth/')) {
       window.dispatchEvent(new Event('folio-session-expired'));
     }
     throw new RequestError(data?.error?.message ?? 'The bookstore is temporarily unavailable.', response.status, data?.error?.fields);
