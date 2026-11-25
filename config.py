@@ -1,3 +1,4 @@
+from os import environ
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -5,7 +6,7 @@ IMAGE_DIR = BASE_DIR / "images"
 DATASET_DIR = BASE_DIR / "dataset"
 
 API_URL = "https://www.googleapis.com/books/v1/volumes"
-API_KEY = "AIzaSyCJnISUnF2HLTpzFFeQAfKUxf3iIUUpedI"  # Optional. Leave blank for public API requests when a key is not needed.
+API_KEY = environ.get("GOOGLE_BOOKS_API_KEY", "")
 
 BOOK_LIMIT_PER_CATEGORY = 50
 MAX_RECORDS_TO_SCAN_PER_CATEGORY = 250  # Scan extra records when some books have no usable cover.
