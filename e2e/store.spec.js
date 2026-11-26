@@ -1,6 +1,71 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 const pass = 'e2e-password-only';
+test('E2E-03 featured books, shelf navigation, recovery and responsive home', async ({ page }, info) => {
+  await page.goto('/');
+  const feature = page.getByRole('region', { name: 'Featured books' });
+  await expect(feature.getByRole('heading', { level: 1 })).toHaveText('How to Stop Time');
+  const advance = feature.getByRole('button', { name: 'Next featured book' });
+  await advance.focus();
+  await page.keyboard.press('Enter');
+  await expect(feature.getByRole('heading')).toHaveText('A Wizard of Earthsea');
+  await expect(advance).toBeFocused();
+  await feature.getByRole('link', { name: 'View book' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('A Wizard of Earthsea');
+  await page.goBack();
+
+  const shelf = page.getByRole('region', { name: 'On the shelves' });
+  await shelf.getByRole('link', { name: 'Cooking', exact: true }).click();
+  await expect(page).toHaveURL(/shelf=cooking/);
+  const first = shelf.locator('article a').first();
+  const title = await first.innerText();
+  await first.click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+  await page.locator('main').getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(shelf.getByRole('link', { name: 'Cooking', exact: true })).toHaveAttribute('aria-current', 'page');
+  await shelf.getByRole('link', { name: 'View catalog' }).click();
+  await expect(page.getByLabel('Category', { exact: true })).toHaveValue('cooking');
+  await page.getByLabel('Search books').fill('Sushi Economy');
+  await page.getByLabel('Search books').press('Enter');
+  await expect(page.getByText('1 book for “Sushi Economy”')).toBeVisible();
+  await expect(page.getByLabel('Category', { exact: true })).toHaveValue('cooking');
+
+  await page.goto('/');
+  await expect(shelf.locator('article')).toHaveCount(6);
+  const audit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(audit.violations.map(item => item.id)).toEqual([]);
+  for (const width of [320, 700, 1280]) {
+    await page.setViewportSize({ width, height: 850 });
+    for (const size of ['100%', '200%']) {
+      await page.evaluate(value => { document.documentElement.style.fontSize = value; }, size);
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(size === '200%' ? '32px' : '16px');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      if (width === 320 && size === '200%') {
+        const titleBox = await feature.getByRole('heading').boundingBox();
+        const coverBox = await feature.locator('.cover').boundingBox();
+        expect(coverBox.y).toBeGreaterThan(titleBox.y + titleBox.height);
+      }
+    }
+    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    if (width === 320) {
+      await page.screenshot({ path: info.outputPath('home-320.png') });
+      await page.getByLabel('Shelf category').selectOption('mystery');
+      await page.reload();
+      await expect(page.getByLabel('Shelf category')).toHaveValue('mystery');
+      await expect(shelf.locator('article').first()).toBeVisible();
+    }
+  }
+  const endpoint = '**/api/books/front-table';
+  await page.route(endpoint, route => route.abort());
+  await page.goto('/');
+  await expect(page.getByText('Could not reach the bookstore.', { exact: false })).toBeVisible();
+  await page.unroute(endpoint);
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(feature.getByRole('heading')).toHaveText('How to Stop Time');
+  await page.route(endpoint, route => route.fulfill({ json: [] }));
+  await page.reload();
+  await expect(shelf.getByRole('heading', { name: 'The shelves are empty' })).toBeVisible();
+});
 async function login(page, email) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
@@ -81,7 +146,7 @@ test('E2E-01 administrator CRUD and customer purchase with reload and fulfillmen
   await buyer.getByRole('checkbox', { name: /I agree/ }).check();
   await buyer.getByRole('button', { name: 'Create account' }).click();
   await expect(buyer).toHaveURL('/');
-  await expect(buyer.getByRole('heading', { name: 'Find your next read.' })).toBeVisible();
+  await expect(buyer.getByRole('heading', { name: 'How to Stop Time' })).toBeVisible();
   await buyer.reload();
   await buyer.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Profile' }).click();
   await buyer.getByLabel('Full name').fill('Browser Reader');
@@ -96,7 +161,7 @@ test('E2E-01 administrator CRUD and customer purchase with reload and fulfillmen
   await expect(buyer.getByLabel('Full name')).toHaveValue('Browser Reader');
   await buyer.getByRole('navigation', { name: 'Store' }).getByRole('link', { name: 'Catalog' }).click();
   await buyer.getByLabel('Search books').fill('How to Stop Time');
-  await buyer.getByRole('button', { name: 'Apply filters' }).click();
+  await buyer.getByRole('button', { name: 'Submit book search' }).click();
   await buyer.getByRole('link', { name: 'How to Stop Time' }).click();
   await buyer.goBack();
   await expect(buyer.getByLabel('Search books')).toHaveValue('How to Stop Time');
@@ -145,7 +210,7 @@ test('E2E-01 administrator CRUD and customer purchase with reload and fulfillmen
 test('E2E-02 catalog reflow, 200% text, accessibility scan, lost connection and empty states', async ({ page }, info) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'On the shelves' })).toBeVisible();
-  await expect(page.locator('.hero-art img')).toHaveCount(3);
+  await expect(page.getByRole('region', { name: 'Featured books' }).locator('img')).toBeVisible();
   await page.screenshot({ path: info.outputPath('home-desktop.png') });
   await page.goto('/catalog');
   await expect(page.getByText('193 books')).toBeVisible();
@@ -155,7 +220,7 @@ test('E2E-02 catalog reflow, 200% text, accessibility scan, lost connection and 
     if (width === 320) {
       await expect(page.getByLabel('Category', { exact: true })).not.toBeVisible();
       await page.screenshot({ path: info.outputPath('catalog-320.png') });
-      await page.getByText('More filters', { exact: true }).click();
+      await page.getByText('Filters', { exact: true }).click();
       await expect(page.getByLabel('Category', { exact: true })).toBeVisible();
     }
   }
@@ -167,7 +232,7 @@ test('E2E-02 catalog reflow, 200% text, accessibility scan, lost connection and 
   expect(result.violations.map(item => [item.id, item.nodes.map(node => node.target)])).toEqual([]);
   await page.route('**/api/books?*', route => route.abort());
   await page.getByLabel('Search books').fill('no such book 557949');
-  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await page.getByRole('button', { name: 'Submit book search' }).click();
   await expect(page.getByText('Could not reach the bookstore.', { exact: false })).toBeVisible();
   await page.unroute('**/api/books?*');
   await page.getByRole('button', { name: 'Try again' }).click();

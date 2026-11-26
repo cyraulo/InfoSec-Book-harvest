@@ -1,8 +1,8 @@
 # Folio interface design
 
-The primary user is a shopper choosing a book. On Home and Catalog, the first three things to notice are how to search, the available books and their prices and stock. A full-width editorial cover display and a filtered shelf were considered. The filtered shelf supports buying decisions and repeat visits, so Home uses a compact introduction with a small collection of actual covers and Catalog keeps controls adjacent to the results.
+The primary user is a shopper who either knows a title or wants to browse. On Home, the three priorities are the header search, a featured edition with its buying details, and the category shelf. Two layouts were considered. A search banner gave most of the first screen to an input. A bookshop front table shows an actual edition in that space and leaves search within reach across the storefront.
 
-Book covers retain their proportions and sit on quiet, tinted shelves. Titles use a serif face, functional text uses a sans serif face and prices sit beside availability. Evergreen identifies primary actions, warm paper supports the reading theme, and burgundy identifies errors. CSS semantic tokens define text, surfaces, borders, focus, spacing and typography.
+The featured jacket stands on an angled lavender shelf. Its title, author, peso price, stock and detail link share the other half of the display. The selection changes only when the shopper presses a control. Other covers sit on neutral backgrounds. Self-hosted DM Sans serves titles, labels and prices. Charcoal identifies primary actions, brick marks the three-spine logo and current store navigation, and errors use burgundy with explanatory text. Shared CSS tokens carry the type, spacing, focus and control treatments into checkout, account and administration.
 
 | Route | Primary task and completion |
 | --- | --- |
@@ -11,7 +11,7 @@ Book covers retain their proportions and sit on quiet, tinted shelves. Titles us
 | Register, sign in, profile, orders | Access an account, save contact details and check the current fulfillment and payment state. |
 | Admin dashboard, books, categories, orders | Find work requiring attention and manage records using comparison tables, edit forms and confirmation dialogs. |
 
-The design follows the supplied Word brief. Native form labels, clear headings, URL-owned catalog state, pending and error feedback, native modal focus containment, reduced motion and labeled scrollable tables form the shared patterns. Narrow screens keep search and Apply visible above the results with additional filters in a native disclosure. Covers reserve space and load lazily outside the featured group. Verification and remaining device and performance checks are tracked in [testing.md](testing.md).
+Home shows up to three featured editions and a six-book shelf from the live catalog. The category links become a labeled select on narrow screens. A selected shelf travels in the URL and its catalog link opens the same category. Catalog search preserves applied filters. Narrow screens place the catalog filters and their actions inside a native disclosure. The featured cover loads eagerly and other jackets load on demand. Native labels, request feedback, modal focus containment and scrollable admin tables follow the supplied design brief. Verification is recorded in [testing.md](testing.md).
 
 | Design rules | Implementation and evidence |
 | --- | --- |

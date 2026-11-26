@@ -77,7 +77,7 @@ export function Cover({ book, eager = false, className = '' }) {
   const [failedPath, setFailedPath] = useState(null);
   return <div className={'cover ' + className}>
     {book.coverPath && failedPath !== book.coverPath
-      ? <img alt="" src={book.coverPath} loading={eager ? 'eager' : 'lazy'}
+      ? <img alt="" src={book.coverPath} loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : undefined}
           decoding="async" onError={() => setFailedPath(book.coverPath)} />
       : <div className="cover-fallback"><BookOpen aria-hidden="true" /><span>Cover unavailable</span></div>}
   </div>;

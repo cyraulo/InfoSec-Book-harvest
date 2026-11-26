@@ -52,6 +52,9 @@ export function authControllers(secure) {
   };
 }
 export const books = admin => ({
+  async frontTable(request, response) {
+    response.json(await catalog.frontTable());
+  },
   async list(request, response) {
     response.json(await catalog.listBooks(rules.parse(rules.catalogQuery, request.query), admin));
   },

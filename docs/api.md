@@ -14,6 +14,7 @@ The browser uses same-origin /api. JSON mutations must send Content-Type: applic
 | PATCH /profile | Signed in | name, phone. Returns saved user. Email and role are not accepted. |
 | GET /categories | Public | Category records |
 | GET /books | Public | Paginated active books |
+| GET /books/front-table | Public | Up to nine active books in shop display order, with current prices, categories and stock. Active catalog titles fill any vacancies. |
 | GET /books/:id | Public | Active book details and populated category |
 | GET /cart | Customer | Populated items, revision and calculated total |
 | POST /cart/items | Customer | book ID and quantity to add. Returns current cart. |

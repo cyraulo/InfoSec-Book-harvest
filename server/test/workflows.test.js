@@ -256,6 +256,22 @@ test('SEED-01 imports the real dataset twice without overriding an edit, and ser
   await request(app).get('/covers/fiction/missing.jpg').expect(404);
 });
 
+test('SHELF-01 featured editions use current inventory and active replacements', async () => {
+  await seedCatalog();
+  await Book.updateOne({ externalId: 'In8mDwAAQBAJ' }, { $set: { stock: 3 } });
+  const load = async () => (await request(app).get('/api/books/front-table').expect(200)).body;
+  const original = await load();
+  assert.equal(original.length, 9);
+  assert.equal(original[0].externalId, 'In8mDwAAQBAJ');
+  assert.equal(original[0].stock, 3);
+  assert.equal(original[0].category.slug, 'fiction');
+  await Book.updateOne({ _id: original[0]._id }, { $set: { archived: true } });
+  const updated = await load();
+  assert.equal(new Set(updated.map(item => item._id)).size, 9);
+  assert.equal(updated[0]._id, original[1]._id);
+  assert.ok(!updated.some(item => item._id === original[0]._id));
+});
+
 test('SETUP-01 seed and administrator commands use environment configuration and can be rerun', async () => {
   const child = promisify(execFile);
   const options = { cwd: root, env: { ...process.env, MONGODB_URI: database.getUri('folio_api_tests'),

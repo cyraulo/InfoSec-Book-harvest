@@ -1,7 +1,7 @@
 import { Component, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BookOpen, ShoppingBag } from 'lucide-react';
-import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Search, ShoppingBag, UserRound } from 'lucide-react';
+import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from './api';
 import { AccountProvider, AuthPage, Guard, ProfilePage, useAccount } from './account';
 import { Catalog, Detail, Home } from './catalog';
@@ -11,6 +11,27 @@ import { Feedback, Heading, useAction } from './shared';
 import { Policies } from './policies';
 import './styles.css';
 
+function StoreSearch() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [params] = useSearchParams();
+  const query = pathname === '/catalog' ? params.get('q') || '' : '';
+  function submit(event) {
+    event.preventDefault();
+    const value = new FormData(event.currentTarget).get('q').trim();
+    const next = new URLSearchParams(pathname === '/catalog' ? params : '');
+    next.delete('page');
+    if (value) next.set('q', value);
+    else next.delete('q');
+    navigate({ pathname: '/catalog', search: next.toString() });
+  }
+  return <form role="search" className="store-search" onSubmit={submit}>
+    <label htmlFor="store-query">Search<span className="sr-only"> books</span></label>
+    <input key={pathname + ':' + query} id="store-query" type="search" name="q"
+      defaultValue={query} maxLength={120} placeholder="Title, author, or ISBN" />
+    <button type="submit" aria-label="Submit book search"><Search size={18} aria-hidden="true" /></button>
+  </form>;
+}
 function Frame() {
   const account = useAccount();
   const action = useAction();
@@ -33,18 +54,19 @@ function Frame() {
     <a className="skip" href="#main-content">Skip to content</a>
     <header className="masthead">
       <div className="shell masthead-inner">
-        <Link className="brand" to="/" aria-label="Folio home"><span><BookOpen size={22} aria-hidden="true" /></span>folio<span className="brand-dot">.</span></Link>
+        <Link className="brand" to="/" aria-label="Folio home"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>folio</Link>
         <nav className="main-nav" aria-label="Store">
           <NavLink to="/" end>Home</NavLink><NavLink to="/catalog">Catalog</NavLink>
           {account.user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
           {account.user?.role === 'customer' && <NavLink to="/orders">Orders</NavLink>}
         </nav>
+        {!pathname.startsWith('/admin') && <StoreSearch />}
         <nav className="account-nav" aria-label="Account">
           {account.user ? <>
             {account.user.role === 'customer' && <NavLink to="/cart"><ShoppingBag size={17} aria-hidden="true" /> Cart</NavLink>}
             <NavLink to="/profile">Profile</NavLink>
             <button className="button text" aria-disabled={action.pending} onClick={signOut}>{action.pending ? 'Signing out…' : 'Sign out'}</button>
-          </> : !account.loading && <NavLink to="/login">Sign in</NavLink>}
+          </> : !account.loading && <NavLink to="/login"><UserRound size={17} aria-hidden="true" />Sign in</NavLink>}
         </nav>
       </div>
     </header>

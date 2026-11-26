@@ -28,6 +28,7 @@ export function routes({ secure, authLimit, store }) {
   api.get('/profile', requireSession, auth.profile);
   api.patch('/profile', requireSession, auth.updateProfile);
   api.get('/books', catalog.list);
+  api.get('/books/front-table', catalog.frontTable);
   api.get('/books/:id', catalog.get);
   api.get('/categories', categories.list);
 

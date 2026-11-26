@@ -6,6 +6,22 @@ const sorts = {
   title: { title: 1, _id: 1 }, 'price-asc': { priceCents: 1, _id: 1 },
   'price-desc': { priceCents: -1, _id: 1 }, recent: { createdAt: -1, _id: -1 },
 };
+// The front table is a shop selection. Prices, covers and availability always come from live records.
+const frontTableIds = [
+  'In8mDwAAQBAJ', 'FD72ekYZqIkC', 'BKjCQgAACAAJ', 'oNY0DwAAQBAJ', 'nAYBEAAAQBAJ',
+  'Xm5H_tRsgWcC', 'WADDM36d3TAC', '5wBQEp6ruIAC', 'gN6ySQnUnfwC',
+];
+export async function frontTable() {
+  const fields = 'externalId title authors category priceCents stock coverPath';
+  const active = { archived: false };
+  const picks = await Book.find({ ...active, externalId: { $in: frontTableIds } })
+    .select(fields).populate('category', 'name slug').lean();
+  picks.sort((a, b) => frontTableIds.indexOf(a.externalId) - frontTableIds.indexOf(b.externalId));
+  if (picks.length === frontTableIds.length) return picks;
+  const others = await Book.find({ ...active, _id: { $nin: picks.map(book => book._id) } })
+    .sort(sorts.title).limit(frontTableIds.length - picks.length).select(fields).populate('category', 'name slug').lean();
+  return picks.concat(others);
+}
 export async function paginate(model, query, { page, size = 12, sort = sorts.title, populate, select }) {
   const pages = Math.max(1, Math.ceil(await model.countDocuments(query) / size));
   const current = Math.min(page, pages);
