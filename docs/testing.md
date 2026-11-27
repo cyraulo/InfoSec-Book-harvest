@@ -1,5 +1,7 @@
 # Folio testing and verification
 
+The page-motion update passed lint, the production build and all four Chromium scenarios. E2E-04 opens a book by keyboard, checks focus on the destination, returns to the filtered catalog with Back, changes the search, and opens the book again with reduced motion enabled. It observes one entrance per page change with normal motion and none on direct load, a same-page search, or reduced-motion navigation.
+
 The storefront refresh passed 13 API tests, three Chromium browser scenarios, lint and the production build. The home and catalog axe scans returned zero violations for the configured WCAG tags. Desktop and narrow screenshots are written under `test-results` by the browser suite.
 
 Security and deployment follow-up. The 12 API tests cover current terms validation, stronger password hash migration, administrator password rotation and session revocation, secure cookie attributes, allowed write origins, rate limits, clean error responses and order ownership. The 2 browser scenarios cover signed-in home redirect and reload after signup, policy pages, and the existing purchase and administration flows. Lint and the production build passed. The npm audit reported zero known dependency vulnerabilities at the time of the check.

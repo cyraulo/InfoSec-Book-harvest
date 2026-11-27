@@ -75,7 +75,7 @@ export function Empty({ title, children }) {
 }
 export function Cover({ book, eager = false, className = '' }) {
   const [failedPath, setFailedPath] = useState(null);
-  return <div className={'cover ' + className}>
+  return <div className={'cover ' + className} data-category={book.category?.slug}>
     {book.coverPath && failedPath !== book.coverPath
       ? <img alt="" src={book.coverPath} loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : undefined}
           decoding="async" onError={() => setFailedPath(book.coverPath)} />

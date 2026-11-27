@@ -1,6 +1,39 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 const pass = 'e2e-password-only';
+test('E2E-04 page motion follows navigation and the reader’s motion preference', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => {
+    window.pageEntrances = [];
+    const seen = new WeakSet();
+    new MutationObserver(() => {
+      for (const animation of document.querySelector('main')?.getAnimations() ?? []) {
+        if (animation.id === 'folio-page-enter' && !seen.has(animation)) {
+          seen.add(animation);
+          window.pageEntrances.push(location.pathname);
+        }
+      }
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto('/catalog?q=How+to+Stop+Time');
+  const book = page.getByRole('link', { name: 'How to Stop Time', exact: true });
+  await book.focus();
+  expect(await page.evaluate(() => window.pageEntrances)).toEqual([]);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('How to Stop Time');
+  await expect(page.getByRole('main')).toBeFocused();
+  const detailPath = new URL(page.url()).pathname;
+  await page.goBack();
+  await expect(book).toBeVisible();
+  await expect(page.getByLabel('Search books')).toHaveValue('How to Stop Time');
+  await page.getByLabel('Search books').fill('Matt Haig');
+  await page.getByLabel('Search books').press('Enter');
+  await expect(page).toHaveURL(/q=Matt\+Haig/);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await book.click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('How to Stop Time');
+  expect(await page.evaluate(() => window.pageEntrances)).toEqual([detailPath, '/catalog']);
+});
 test('E2E-03 featured books, shelf navigation, recovery and responsive home', async ({ page }, info) => {
   await page.goto('/');
   const feature = page.getByRole('region', { name: 'Featured books' });
@@ -10,6 +43,14 @@ test('E2E-03 featured books, shelf navigation, recovery and responsive home', as
   await page.keyboard.press('Enter');
   await expect(feature.getByRole('heading')).toHaveText('A Wizard of Earthsea');
   await expect(advance).toBeFocused();
+  const third = feature.getByRole('button', { name: 'Feature The ABC Murders', exact: true });
+  await third.click();
+  await expect(third).toHaveAttribute('aria-pressed', 'true');
+  await expect(feature.getByRole('heading')).toHaveText('The ABC Murders');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await feature.getByRole('button', { name: 'Feature A Wizard of Earthsea', exact: true }).click();
+  await expect(feature.locator('.cover')).toHaveCSS('animation-name', 'none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await feature.getByRole('link', { name: 'View book' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('A Wizard of Earthsea');
   await page.goBack();
@@ -210,7 +251,7 @@ test('E2E-01 administrator CRUD and customer purchase with reload and fulfillmen
 test('E2E-02 catalog reflow, 200% text, accessibility scan, lost connection and empty states', async ({ page }, info) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'On the shelves' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Featured books' }).locator('img')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Featured books' }).locator('.cover img')).toBeVisible();
   await page.screenshot({ path: info.outputPath('home-desktop.png') });
   await page.goto('/catalog');
   await expect(page.getByText('193 books')).toBeVisible();

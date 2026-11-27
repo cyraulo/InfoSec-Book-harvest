@@ -1,4 +1,4 @@
-import { Component, useEffect } from 'react';
+import { Component, useLayoutEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Search, ShoppingBag, UserRound } from 'lucide-react';
 import { BrowserRouter, Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -38,10 +38,26 @@ function Frame() {
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
-  useEffect(() => {
-    const main = document.getElementById('main-content');
-    if (main && document.activeElement !== document.body) main.focus({ preventScroll: true });
+  const mainRef = useRef(null);
+  const previousPath = useRef(pathname);
+  useLayoutEffect(() => {
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    const main = mainRef.current;
+    main.focus({ preventScroll: true });
     window.scrollTo(0, 0);
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (preference.matches || !main.animate) return;
+    const entrance = main.animate([
+      { opacity: 0.72, transform: 'translateY(5px)' },
+      { opacity: 1, transform: 'none' },
+    ], { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', id: 'folio-page-enter' });
+    const stop = () => entrance.cancel();
+    preference.addEventListener('change', stop);
+    return () => {
+      preference.removeEventListener('change', stop);
+      stop();
+    };
   }, [pathname]);
   async function signOut() {
     const result = await action.run(() => api('/auth/logout', { method: 'POST', body: {} }));
@@ -70,7 +86,7 @@ function Frame() {
         </nav>
       </div>
     </header>
-    <main id="main-content" tabIndex={-1} className="shell main">
+    <main ref={mainRef} id="main-content" tabIndex={-1} className="shell main">
       <Feedback error={action.error} notice={location.state?.notice} />
       <Outlet />
     </main>

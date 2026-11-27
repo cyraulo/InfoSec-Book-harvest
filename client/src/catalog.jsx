@@ -10,21 +10,27 @@ function FeaturedBooks({ books }) {
   const location = useLocation();
   const index = position % books.length;
   const book = books[index];
-  return <section className="front-table" aria-label="Featured books">
+  return <section className="front-table" data-edition={index} aria-label="Featured books">
     <div className="feature-copy">
       <p className="feature-kicker"><Bookmark size={16} aria-hidden="true" /> Featured book
         {book.category?.name && <span>{book.category.name}</span>}</p>
       <div className="feature-info" aria-live="polite" aria-atomic="true">
-        <h1>{book.title}</h1><p className="feature-author">{authors(book)}</p>
+        <h1 key={book._id}>{book.title}</h1><p className="feature-author">{authors(book)}</p>
         <div className="book-meta"><strong>{money(book.priceCents)}</strong><Availability book={book} /></div>
       </div>
       <Link className="button" to={'/books/' + book._id} state={{ returnTo: location.pathname + location.search }}>View book</Link>
     </div>
     <div className="feature-stage">
-      <Cover book={book} eager />
+      <Cover key={book._id} book={book} eager />
       {books.length > 1 && <div className="feature-controls" role="group" aria-label="Featured book selection">
         <button aria-label="Previous featured book" onClick={() => setPosition((index + books.length - 1) % books.length)}><ChevronLeft size={17} /></button>
-        <span>{index + 1} / {books.length}</span>
+        <div className="edition-index">{books.map((item, i) =>
+          <button key={item._id} type="button" aria-label={'Feature ' + item.title}
+            aria-pressed={index === i} onClick={() => setPosition(i)}>
+            {item.coverPath && <img src={item.coverPath} alt="" width="18" height="26"
+              decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}
+            <span>{String(i + 1).padStart(2, '0')}</span>
+          </button>)}</div>
         <button aria-label="Next featured book" onClick={() => setPosition((index + 1) % books.length)}><ChevronRight size={17} /></button>
       </div>}
     </div>
