@@ -54,7 +54,11 @@ export async function listBooks({ q, category, min, max, availability, sort, pag
     select: 'title authors category isbn priceCents stock coverPath archived' });
 }
 export async function getBook(id, admin = false) {
-  const book = await Book.findOne(admin ? { _id: id } : { _id: id, archived: false }).populate('category').lean();
+  const query = Book.findOne(admin ? { _id: id } : { _id: id, archived: false });
+  if (!admin) {
+    query.select('title subtitle authors publisher publishedDate category isbn description pageCount language averageRating ratingsCount priceCents stock coverPath');
+  }
+  const book = await query.populate('category', 'name slug').lean();
   if (!book) throw new ApiError(404, 'Book not found.');
   return book;
 }

@@ -108,6 +108,16 @@ export const cart = {
     response.json(await orders.changeCart(request.user._id, 'clear'));
   },
 };
+function orderDetails(order) {
+  const { _id, status, paymentMethod, paymentStatus, totalCents, currency, createdAt, updatedAt } = order;
+  const { name, phone, address } = order.delivery;
+  return {
+    _id, status, paymentMethod, paymentStatus, totalCents, currency, createdAt, updatedAt,
+    delivery: { name, phone, address },
+    items: order.items.map(({ book, title, quantity, unitPriceCents }) => ({ book, title, quantity, unitPriceCents })),
+  };
+}
+
 export const order = admin => ({
   async findCheckout(request, response) {
     const checkoutKey = rules.parse(rules.checkoutInput.shape.checkoutKey, request.params.key);
@@ -121,7 +131,7 @@ export const order = admin => ({
     if (admin && request.query.status) query.status = rules.parse(rules.statusInput, { status: request.query.status }).status;
     response.json(await catalog.paginate(Order, query, {
       page, sort: { createdAt: -1, _id: -1 },
-      select: 'status paymentMethod paymentStatus totalCents currency createdAt delivery.name',
+      select: 'status paymentMethod paymentStatus totalCents currency createdAt' + (admin ? ' delivery.name' : ''),
     }));
   },
   async get(request, response) {
@@ -129,15 +139,15 @@ export const order = admin => ({
     if (!admin) query.customer = request.user._id;
     const result = await Order.findOne(query).lean();
     if (!result) throw new rules.ApiError(404, 'Order not found.');
-    response.json({ ...result, nextStatuses: admin ? orders.transitions[result.status] : [] });
+    response.json({ ...orderDetails(result), nextStatuses: admin ? orders.transitions[result.status] : [] });
   },
   async checkout(request, response) {
     const result = await orders.checkout(request.user._id, body(rules.checkoutInput)(request));
-    response.status(result.replayed ? 200 : 201).json(result.order);
+    response.status(result.replayed ? 200 : 201).json(orderDetails(result.order));
   },
   async update(request, response) {
     const result = await orders.updateStatus(id(request), body(rules.statusInput)(request).status);
-    response.json({ ...result, nextStatuses: orders.transitions[result.status] });
+    response.json({ ...orderDetails(result), nextStatuses: orders.transitions[result.status] });
   },
 });
 export async function dashboard(request, response) {

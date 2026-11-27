@@ -1,5 +1,7 @@
 # Folio testing and verification
 
+The deployment security review scanned 199 static build files against sensitive values from the available local credential files and checked for source maps and credential artifacts. No matching secrets or source maps were found. The Vercel build copied 193 approved cover files. Order API tests cover guest denial, cross-account reads, checkout recovery ownership, customer denial of admin updates, and the fields returned by order and catalog responses. All 13 API tests, lint and the production build passed. npm audit reported zero known vulnerabilities. An older Git revision contains a Google Books API key. Its revocation needs to be verified in Google Cloud.
+
 The page-motion update passed lint, the production build and all four Chromium scenarios. E2E-04 opens a book by keyboard, checks focus on the destination, returns to the filtered catalog with Back, changes the search, and opens the book again with reduced motion enabled. It observes one entrance per page change with normal motion and none on direct load, a same-page search, or reduced-motion navigation.
 
 The storefront refresh passed 13 API tests, three Chromium browser scenarios, lint and the production build. The home and catalog axe scans returned zero violations for the configured WCAG tags. Desktop and narrow screenshots are written under `test-results` by the browser suite.

@@ -209,12 +209,20 @@ test('ORDER-01 server repricing, multi-line rollback, stock conflict, replay, hi
   assert.equal(results[1].body._id, order._id);
   assert.equal(order.totalCents, 69900);
   assert.equal(order.checkoutKey, undefined);
+  assert.equal(order.customer, undefined);
+  assert.equal(order.__v, undefined);
   await shop.get('/api/orders/checkout/' + input.checkoutKey).expect(200, { _id: order._id });
   await other.get('/api/orders/checkout/' + input.checkoutKey).expect(404);
   await other.get('/api/orders/' + order._id).expect(404);
-  await shop.get('/api/orders/' + order._id).expect(200);
+  const detail = (await shop.get('/api/orders/' + order._id).expect(200)).body;
+  assert.deepEqual(detail.delivery, recipient);
+  assert.equal(detail.customer, undefined);
+  assert.equal(detail.checkoutKey, undefined);
+  await request(app).get('/api/orders/' + order._id).expect(401);
   assert.equal((await other.get('/api/orders').expect(200)).body.total, 0);
-  assert.equal((await shop.get('/api/orders').expect(200)).body.total, 1);
+  const history = (await shop.get('/api/orders').expect(200)).body;
+  assert.equal(history.total, 1);
+  assert.equal(history.items[0].delivery, undefined);
   assert.equal((await Book.findById(book._id)).stock, before - 2);
   assert.equal((await shop.get('/api/cart').expect(200)).body.items.length, 0);
   await shop.patch(base + '/orders/' + order._id + '/status').send({ status: 'Confirmed' }).expect(403);
@@ -247,6 +255,11 @@ test('SEED-01 imports the real dataset twice without overriding an edit, and ser
   const first = await seedCatalog();
   assert.deepEqual(first, { imported: 193, updated: 0, skipped: 0, invalid: 0, missingCovers: 0, problems: [] });
   const imported = await Book.findOne({ externalId: 'In8mDwAAQBAJ' });
+  const publicBook = (await request(app).get('/api/books/' + imported._id).expect(200)).body;
+  assert.equal(publicBook.title, imported.title);
+  for (const field of ['__v', 'externalId', 'coverSourceUrl', 'googleBooksUrl', 'relationVersion']) {
+    assert.equal(publicBook[field], undefined);
+  }
   assert.equal(imported.priceCents, 39900);
   assert.equal(imported.isbn, '9780525522881');
   await Book.updateOne({ _id: imported._id }, { $set: { stock: 4 } });
