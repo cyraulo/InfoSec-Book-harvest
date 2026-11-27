@@ -5,7 +5,7 @@ import hooks from 'eslint-plugin-react-hooks';
 export default [
   { ignores: ['client/dist/**', 'playwright-report/**', 'test-results/**', '.local/**'] },
   js.configs.recommended,
-  { files: ['server/**/*.js', 'client/vite.config.js', 'e2e/**/*.js'], languageOptions: { globals: globals.node } },
+  { files: ['server/**/*.js', 'api/**/*.js', 'client/vite.config.js', 'e2e/**/*.js'], languageOptions: { globals: globals.node } },
   { files: ['e2e/**/*.spec.js'], languageOptions: { globals: globals.browser } },
   {
     files: ['client/src/**/*.{js,jsx}'],

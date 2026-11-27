@@ -1,5 +1,7 @@
 # Folio production deployment
 
+For the static frontend and serverless API setup, follow [Vercel deployment](vercel.md). The steps below describe a long-running Node service.
+
 Deploy the frontend and API as one Node service behind HTTPS. The Dockerfile builds the Vite bundle, installs production dependencies in the runtime image and runs Node as an unprivileged user. A Node host can also run npm ci, npm run build and npm start. The service binds to HOST and PORT, and the probe is GET /api/ready.
 
 ## Configure the host
